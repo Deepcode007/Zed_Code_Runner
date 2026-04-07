@@ -10,17 +10,9 @@ import time
 import sys
 from pathlib import Path
 
-# ======================== USER CONFIGURATION ========================
-# Change this to your preferred default competitive programming folder
-CP_FOLDER = os.path.expanduser("[~/cp_workspace]")
-
-# Network port for Competitive Companion (default: 10043)
+# System defaults
 PORT = 10043
-
-# Time limit in seconds for your tests
 TIME_LIMIT_SEC = 4.0
-
-# ====================================================================
 
 # Language profiles: compiler command, CF/AtCoder language IDs
 LANGUAGES = {
@@ -52,7 +44,7 @@ LANGUAGES = {
     },
 }
 DEFAULT_LANG = "cpp20"
-CONFIG_PATH = Path.home() / ".zed_cp" / "config.json"
+CONFIG_PATH = Path.home() / ".vc-zed-cp-helper" / "config.json"
 
 def get_saved_lang():
     """Read the saved language from config. Falls back to DEFAULT_LANG."""
@@ -133,13 +125,14 @@ def process_problem(data, active_folder):
 
     # Write template if file doesn't exist
     if not file_path.exists():
-        template_path = active_folder / "my_template.cpp"
+        # Check current dir first, then script dir
+        template_path = active_folder / "boilerplate.cpp"
         template_content = ""
         if template_path.exists():
             template_content = template_path.read_text(encoding="utf-8")
         else:
             script_dir = Path(__file__).parent.resolve()
-            alt_template = script_dir / "my_template.cpp"
+            alt_template = script_dir / "boilerplate.cpp"
             if alt_template.exists():
                 template_content = alt_template.read_text(encoding="utf-8")
                 
@@ -211,12 +204,9 @@ def get_active_zed_folder():
     return None
 
 def listen_cmd(args):
-    # Determine the target directory: argument overrides the hardcoded CP_FOLDER
-    if args.directory and args.directory != ".":
-        target_dir = Path(args.directory).resolve()
-    else:
-        target_dir = Path(CP_FOLDER).resolve()
-        
+    # Determine the target directory: defaults to current directory (".")
+    target_dir = Path(args.directory).resolve()
+    
     force_kill_process_on_port(PORT)
     
     print(f"[Listen] Starting Competitive Companion listener on port {PORT}...")
@@ -533,7 +523,7 @@ def _submit_codeforces(submit_url, problem_code, lang_id, code_b64):
             } 
         }
         if (form) {
-            var btn = form.querySelector('input[type="submit"], button[type="submit"]');
+            var btn = form.querySelector('input[type="submit"], button[type="submit"], .submit');
             if (btn) { btn.click(); return 'SUBMITTED'; }
             form.submit(); return 'SUBMITTED'; 
         }
@@ -543,10 +533,24 @@ def _submit_codeforces(submit_url, problem_code, lang_id, code_b64):
 
     RESULT_JS = r"""(function() {
     try {
-        if (document.readyState !== 'complete') return 'WAIT';
         var url = document.location.href;
-        var e1 = document.querySelector('.error.for__source, .error.for__submittedProblemCode');
-        if (e1) return 'REJECTED: ' + e1.textContent.trim();
+        var hasCap = false;
+        
+        if (document.title.indexOf('Just a moment') > -1 || document.title.indexOf('Attention Required') > -1) hasCap = true;
+        var eSub = document.querySelector('.error.for__submittedProblemCode, .error.for__source');
+        if (eSub && eSub.textContent.toLowerCase().indexOf('captcha') > -1) hasCap = true;
+        
+        if (url.indexOf('/submit') > -1) {
+            var ws = document.querySelectorAll('.cf-turnstile, #turnstile-wrapper, .g-recaptcha');
+            for (var i = 0; i < ws.length; i++) { if (ws[i].innerHTML.trim() !== '') hasCap = true; }
+            if (document.querySelector('iframe[src*="captcha"], iframe[src*="challenge"], iframe[src*="turnstile"]')) hasCap = true;
+        }
+        
+        if (hasCap) return 'CAPTCHA';
+
+        if (document.readyState !== 'complete') return 'WAIT';
+        
+        if (eSub) return 'REJECTED: ' + eSub.textContent.trim();
         var rows = document.querySelectorAll('tr[data-submission-id]');
         if (rows.length > 0) {
             var cell = rows[0].querySelector('td.status-verdict-cell, td:nth-child(6), .submissionVerdictWrapper, .verdict-waiting, .verdict-accepted, .verdict-rejected');
@@ -570,12 +574,24 @@ tell application "Safari"
     repeat 120 times
         delay 2
         try
-            set pageCheck to do JavaScript "document.querySelector('select[name=\\"programTypeId\\"]') ? 'READY' : (document.querySelector('iframe[src*=\\"captcha\\"], iframe[src*=\\"challenge\\"], #turnstile-wrapper, .cf-turnstile, .h-captcha, #challenge-running') ? 'CAPTCHA' : 'WAITING')" in submitTab
+            set pageCheck to do JavaScript "(function(){{
+                var isC = false;
+                if(document.title.indexOf('Just a moment')>-1 || document.title.indexOf('Attention Required')>-1) isC=true;
+                if(document.querySelector('iframe[src*=\\"challenge\\"], iframe[src*=\\"turnstile\\"]') && !document.querySelector('select[name=\\"programTypeId\\"]')) isC=true;
+                var err = document.querySelector('.error');
+                if(err && err.textContent.toLowerCase().indexOf('captcha') > -1) isC=true;
+                
+                if(isC) return 'CAPTCHA';
+                if(document.querySelector('select[name=\\"programTypeId\\"]')) return 'READY';
+                return 'WAITING';
+            }})()" in submitTab
             if pageCheck is "READY" then exit repeat
-            if pageCheck is "CAPTCHA" and captchaAlerted is false then
-                set captchaAlerted to true
-                tell application "Safari" to activate
-                log "CAPTCHA: Please solve the CAPTCHA in Safari"
+            if pageCheck is "CAPTCHA" then
+                if captchaAlerted is false then
+                    set captchaAlerted to true
+                    tell application "Safari" to activate
+                    log "CAPTCHA: Please solve the CAPTCHA in Safari..."
+                end if
             end if
         on error errMsg
             if errMsg contains "not allowed" then return "ERROR: Enable 'Allow JavaScript from Apple Events' in Safari"
@@ -588,13 +604,24 @@ tell application "Safari"
     delay 4
     set resultJS to read POSIX file "/tmp/foc_read_result.js"
     set resultInfo to "UNKNOWN: Timed out"
+    set resCaptchaAlerted to false
     repeat 120 times
         try
             set resultInfo to do JavaScript resultJS in submitTab
         on error
             set resultInfo to "WAIT"
         end try
-        log resultInfo
+        
+        if resultInfo is "CAPTCHA" then
+            if resCaptchaAlerted is false then
+                set resCaptchaAlerted to true
+                tell application "Safari" to activate
+            end if
+            log "CAPTCHA: Waiting for you to solve and resubmit..."
+        else
+            log resultInfo
+        end if
+        
         if resultInfo starts with "RESULT:" or resultInfo starts with "REJECTED:" then exit repeat
         if resultInfo starts with "RELOAD:" then
             do JavaScript "window.location.reload()" in submitTab

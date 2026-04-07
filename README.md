@@ -26,60 +26,50 @@ This tool runs entirely locally as a Python script. It intercepts problem data f
 ## Installation
 
 ### 1. Place the Script
-Place the main `zed_cp.py` script somewhere on your machine, for example into `~/.zed_cp/`.
+Place the main `main.py` script somewhere on your machine, for example into `~/.vc-zed-cp-helper/`.
 
 ```bash
-mkdir -p ~/.zed_cp
-cp zed_cp.py ~/.zed_cp/zed_cp.py
+mkdir -p ~/.vc-zed-cp-helper
+cp main.py ~/.vc-zed-cp-helper/main.py
 ```
 
-### 2. Configure the Target Folder
-Open `~/.zed_cp/zed_cp.py` and modify the **USER CONFIGURATION** block at the very top:
+### 2. Add Custom Code Template (Optional)
+Put your default `C++` (or Python/Java) template at `~/.vc-zed-cp-helper/boilerplate.cpp`. If this file doesn't exist, it will just leave your new files empty before injecting tests.
 
-```python
-# ======================== USER CONFIGURATION ========================
-# Change this to your preferred default competitive programming folder
-CP_FOLDER = os.path.expanduser("~/cp_workspace")
-```
-By default, new scraped problems will be generated in `~/cp_workspace`. 
-
-### 3. Add Custom Code Template (Optional)
-Put your default `C++` (or Python/Java) template at `~/.zed_cp/my_template.cpp`. If this file doesn't exist, it will just leave your new files empty before injecting tests.
-
-### 4. Setup Zed Tasks
+### 3. Setup Zed Tasks
 Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 tasks to integrate smoothly with Zed's task runner (`cmd+shift+R`):
 
 ```json
 [
   {
     "label": "CP: Start Listener (Current Folder)",
-    "command": "python3 ~/.zed_cp/zed_cp.py listen \"${ZED_DIRNAME}\"",
+    "command": "python3 ~/.vc-zed-cp-helper/main.py listen \"${ZED_DIRNAME}\"",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
     "hide": "never"
   },
   {
     "label": "CP: Run Tests",
-    "command": "python3 ~/.zed_cp/zed_cp.py run \"${ZED_FILE}\"",
+    "command": "python3 ~/.vc-zed-cp-helper/main.py run \"${ZED_FILE}\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
   },
   {
     "label": "CP: Submit to Codeforces / AtCoder",
-    "command": "python3 ~/.zed_cp/zed_cp.py submit \"${ZED_FILE}\"",
+    "command": "python3 ~/.vc-zed-cp-helper/main.py submit \"${ZED_FILE}\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
   },
   {
     "label": "CP: Set Language [cpp20]",
-    "command": "python3 ~/.zed_cp/zed_cp.py set_lang cpp20",
+    "command": "python3 ~/.vc-zed-cp-helper/main.py set_lang cpp20",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
   }
 ]
 ```
 
-### 5. Basic Keymap
+### 4. Basic Keymap
 ```json
 [
   {
@@ -98,14 +88,14 @@ Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 ta
 
 ### 1. Starting the Listener
 At the start of your programming session, open Zed and launch the **CP: Start Listener** task.
-*Alternatively, run `python3 ~/.zed_cp/zed_cp.py listen` in any terminal.*
+*Alternatively, run `python3 ~/.vc-zed-cp-helper/main.py listen` in any terminal.*
 
 Click the green `+` on the Competitive Companion extension in your browser when viewing a Codeforces or AtCoder problem. Zed will automatically open the generated source file.
 
 ### 2. Set Language 
 You only have to do this once. Run the **CP: Set Language [cpp20]** task. 
 *(You can press `TAB` before hitting enter to modify it to `cpp23`, `python`, `java`, etc.)*
-This saves the active language inside `~/.zed_cp/config.json`. Every "Run" or "Submit" task will use this language.
+This saves the active language inside `~/.vc-zed-cp-helper/config.json`. Every "Run" or "Submit" task will use this language.
 
 ### 3. Testing 
 Solve your problem and save the file. Open the Zed Task Menu (`cmd+shift+R`) and run **CP: Run Tests**. The script compiles the code dynamically and tests every embedded sample case.
@@ -125,4 +115,4 @@ If the automation hits a CAPTCHA wall:
 3. Once you manually click the CAPTCHA (and/or submit), the script detects the form change, and automatically resumes live verdict polling in your Zed terminal!
 
 ## Supporting New Languages
-To modify compiler flags or add custom languages (e.g. Rust), just edit the `LANGUAGES` mapping inside `zed_cp.py`. You'll need the `cf_id` (Codeforces Language ID) or `ac_id` (AtCoder Language ID) depending on the platform.
+To modify compiler flags or add custom languages (e.g. Rust), just edit the `LANGUAGES` mapping inside `main.py`. You'll need the `cf_id` (Codeforces Language ID) or `ac_id` (AtCoder Language ID) depending on the platform.
