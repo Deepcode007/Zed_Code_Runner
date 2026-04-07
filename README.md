@@ -79,6 +79,19 @@ Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 ta
 ]
 ```
 
+### 5. Basic Keymap
+```json
+[
+  {
+    "context": "Workspace",
+    "bindings": {
+      "cmd-'": ["task::Spawn", { "task_name": "CP: Run Tests" }],
+      "cmd-enter": ["task::Spawn", { "task_name": "CP: Submit to Codeforces" }],
+      "cmd-r": ["task::Spawn", { "task_name": "CP: Start Listener (Current Folder)" }],
+    }
+  },
+]
+```
 ---
 
 ## Usage
