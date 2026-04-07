@@ -10,9 +10,17 @@ import time
 import sys
 from pathlib import Path
 
-# ======================== Configuration ========================
+# ======================== USER CONFIGURATION ========================
+# Change this to your preferred default competitive programming folder
+CP_FOLDER = os.path.expanduser("[~/cp_workspace]")
+
+# Network port for Competitive Companion (default: 10043)
 PORT = 10043
+
+# Time limit in seconds for your tests
 TIME_LIMIT_SEC = 4.0
+
+# ====================================================================
 
 # Language profiles: compiler command, CF/AtCoder language IDs
 LANGUAGES = {
@@ -45,7 +53,6 @@ LANGUAGES = {
 }
 DEFAULT_LANG = "cpp20"
 CONFIG_PATH = Path.home() / ".zed_cp" / "config.json"
-CP_FOLDER = os.path.expanduser("~/Desktop/PCode/cp/questions")
 
 def get_saved_lang():
     """Read the saved language from config. Falls back to DEFAULT_LANG."""
