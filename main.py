@@ -123,21 +123,6 @@ def process_problem(data, active_folder):
     print(f"\n[Companion] Received problem: {problem_name}")
     print(f"[Companion] Writing to: {file_path}")
 
-    # Write template if file doesn't exist
-    if not file_path.exists():
-        # Check current dir first, then script dir
-        template_path = active_folder / "boilerplate.cpp"
-        template_content = ""
-        if template_path.exists():
-            template_content = template_path.read_text(encoding="utf-8")
-        else:
-            script_dir = Path(__file__).parent.resolve()
-            alt_template = script_dir / "boilerplate.cpp"
-            if alt_template.exists():
-                template_content = alt_template.read_text(encoding="utf-8")
-                
-        file_path.write_text(template_content, encoding="utf-8")
-
     # Tests blocks & Meta extraction
     url = data.get("url", "")
     tests_str = f"\n\n// URL: {url}\n/* === TEST CASES ===\n"
@@ -147,14 +132,27 @@ def process_problem(data, active_folder):
         tests_str += f"Expected:\n{test.get('output', '').strip()}\n\n"
     tests_str += "=== END TEST CASES === */\n"
 
-    # Append tests to .cpp snippet
-    original_code = file_path.read_text(encoding="utf-8")
-    
-    # Strip old test cases if they exist
+    # Read existing code and strip old test cases if they exist
+    original_code = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
     if "// URL: " in original_code:
         original_code = re.sub(r"// URL: .*?\n", "", original_code)
     if "/* === TEST CASES ===" in original_code:
         original_code = re.sub(r"/\* === TEST CASES ===.*?=== END TEST CASES === \*/\s*", "", original_code, flags=re.DOTALL)
+
+    # Load template if file was empty or newly created
+    if not original_code.strip():
+        template_content = ""
+        root_template = CONFIG_PATH.parent / "boilerplate.cpp"
+        script_dir = Path(__file__).parent.resolve()
+        alt_template = script_dir / "boilerplate.cpp"
+        
+        # Check global config root directory first, then fallback to script directory
+        if root_template.exists():
+            template_content = root_template.read_text(encoding="utf-8")
+        elif alt_template.exists():
+            template_content = alt_template.read_text(encoding="utf-8")
+            
+        original_code = template_content
 
     new_code = original_code.rstrip() + tests_str
     file_path.write_text(new_code, encoding="utf-8")
