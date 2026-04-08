@@ -26,21 +26,23 @@ This tool runs entirely locally as a Python script. It intercepts problem data f
 ## Installation
 
 ### 1. Place the Script
-Place the main `main.py` script somewhere on your machine, for example into `~/.vc-zed-cp-helper/`.
+By default (and recommended), the script and its configurations live in `~/.vc-zed-cp-helper/` in the main script.
 
 ```bash
-mkdir -p ~/.vc-zed-cp-helper
-cp main.py ~/.vc-zed-cp-helper/main.py
+cd ~ && git clone https://github.com/prsweet/vc-zed-cp-helper.git .vc-zed-cp-helper # OR your directory
 ```
 
+*(Note: If you want to install it to a different custom folder or path, you must edit the `APP_DIR = "~/.vc-zed-cp-helper"` variable at the top of `main.py` to match your desired path!)*
+
 ### 2. Add Custom Code Template (Optional)
-Put your default `C++` (or Python/Java) template at `~/.vc-zed-cp-helper/boilerplate.cpp`. If this file doesn't exist, it will just leave your new files empty before injecting tests.
+Put your default `C++` (or Python/Java) template inside the app directory at `~/.vc-zed-cp-helper/boilerplate.cpp` (or whatever custom `APP_DIR` you set). If this file doesn't exist, it will just leave your new files empty before injecting tests.
 
 ### 3. Setup Zed Tasks
-Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 tasks to integrate smoothly with Zed's task runner (`cmd+shift+R`):
+Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 tasks with your `APP_DIR` to integrate smoothly with Zed's task runner (`cmd+shift+R`):
 
 ```json
 [
+  // if you changed to the custom directory, change the directory to main.py in all tasks accordingly
   {
     "label": "CP: Start Listener (Current Folder)",
     "command": "python3 ~/.vc-zed-cp-helper/main.py listen \"${ZED_DIRNAME}\"",
@@ -70,16 +72,18 @@ Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 ta
 ```
 
 ### 4. Basic Keymap
+Below is a basic keymap. You can add these to your (`~/.config/zed/keymap.json`) according to your workspace preferences:
+
 ```json
 [
   {
     "context": "Workspace",
     "bindings": {
       "cmd-'": ["task::Spawn", { "task_name": "CP: Run Tests" }],
-      "cmd-enter": ["task::Spawn", { "task_name": "CP: Submit to Codeforces" }],
-      "cmd-r": ["task::Spawn", { "task_name": "CP: Start Listener (Current Folder)" }],
+      "cmd-enter": ["task::Spawn", { "task_name": "CP: Submit to Codeforces / AtCoder" }],
+      "cmd-r": ["task::Spawn", { "task_name": "CP: Start Listener (Current Folder)" }]
     }
-  },
+  }
 ]
 ```
 ---

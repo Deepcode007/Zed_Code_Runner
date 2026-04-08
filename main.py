@@ -13,6 +13,7 @@ from pathlib import Path
 # System defaults
 PORT = 10043
 TIME_LIMIT_SEC = 4.0
+APP_DIR = "~/.vc-zed-cp-helper" # CHANGE THIS ACCORDINGLY
 
 # Language profiles: compiler command, CF/AtCoder language IDs
 LANGUAGES = {
@@ -44,7 +45,7 @@ LANGUAGES = {
     },
 }
 DEFAULT_LANG = "cpp20"
-CONFIG_PATH = Path.home() / ".vc-zed-cp-helper" / "config.json"
+CONFIG_PATH = Path(APP_DIR).expanduser() / "config.json"
 
 def get_saved_lang():
     """Read the saved language from config. Falls back to DEFAULT_LANG."""
@@ -123,6 +124,15 @@ def process_problem(data, active_folder):
     print(f"\n[Companion] Received problem: {problem_name}")
     print(f"[Companion] Writing to: {file_path}")
 
+    # Write template if file doesn't exist
+    if not file_path.exists():
+        content = ""
+        boilerplate = Path(APP_DIR).expanduser() / "boilerplate.cpp"
+        if boilerplate.exists():
+            content = boilerplate.read_text(encoding="utf-8")
+                
+        file_path.write_text(content, encoding="utf-8")
+
     # Tests blocks & Meta extraction
     url = data.get("url", "")
     tests_str = f"\n\n// URL: {url}\n/* === TEST CASES ===\n"
@@ -132,27 +142,14 @@ def process_problem(data, active_folder):
         tests_str += f"Expected:\n{test.get('output', '').strip()}\n\n"
     tests_str += "=== END TEST CASES === */\n"
 
-    # Read existing code and strip old test cases if they exist
-    original_code = file_path.read_text(encoding="utf-8") if file_path.exists() else ""
+    # Append tests to .cpp snippet
+    original_code = file_path.read_text(encoding="utf-8")
+    
+    # Strip old test cases if they exist
     if "// URL: " in original_code:
         original_code = re.sub(r"// URL: .*?\n", "", original_code)
     if "/* === TEST CASES ===" in original_code:
         original_code = re.sub(r"/\* === TEST CASES ===.*?=== END TEST CASES === \*/\s*", "", original_code, flags=re.DOTALL)
-
-    # Load template if file was empty or newly created
-    if not original_code.strip():
-        template_content = ""
-        root_template = CONFIG_PATH.parent / "boilerplate.cpp"
-        script_dir = Path(__file__).parent.resolve()
-        alt_template = script_dir / "boilerplate.cpp"
-        
-        # Check global config root directory first, then fallback to script directory
-        if root_template.exists():
-            template_content = root_template.read_text(encoding="utf-8")
-        elif alt_template.exists():
-            template_content = alt_template.read_text(encoding="utf-8")
-            
-        original_code = template_content
 
     new_code = original_code.rstrip() + tests_str
     file_path.write_text(new_code, encoding="utf-8")
@@ -521,9 +518,12 @@ def _submit_codeforces(submit_url, problem_code, lang_id, code_b64):
             } 
         }
         if (form) {
-            var btn = form.querySelector('input[type="submit"], button[type="submit"], .submit');
-            if (btn) { btn.click(); return 'SUBMITTED'; }
-            form.submit(); return 'SUBMITTED'; 
+            setTimeout(function() {
+                var btn = form.querySelector('input[type="submit"], button[type="submit"], .submit');
+                if (btn) btn.click();
+                else form.submit();
+            }, 800);
+            return 'SUBMITTED'; 
         }
         return 'ERROR: Form not found.';
     } catch(e) { return 'ERROR: ' + e.message; }
