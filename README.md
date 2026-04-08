@@ -45,7 +45,7 @@ Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 ta
   // if you changed to the custom directory, change the directory to main.py in all tasks accordingly
   {
     "label": "CP: Start Listener (Current Folder)",
-    "command": "python3 ~/.vc-zed-cp-helper/main.py listen \"${ZED_DIRNAME}\"",
+    "command": "python3 ~/.vc-zed-cp-helper/main.py listen \"${ZED_WORKTREE_ROOT}\"",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
     "hide": "never"
