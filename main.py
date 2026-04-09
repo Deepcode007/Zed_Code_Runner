@@ -859,27 +859,29 @@ def submit_cmd(args):
     
     print("\n\033[93mSafari will open in the background to handle the submission.\033[0m")
     
-    if platform == "codeforces":
-        res = _submit_codeforces(submit_url, problem_code, lang_id, code_b64)
+    def print_verdict(res):
         print("\n==============================")
+        v = res.lower()
         if res.startswith("RESULT:"):
-            print(f"\u2705 \033[92m{res}\033[0m")
+            if "accepted" in v or ": ac" in v:
+                print(f"\u2705 \033[92m{res}\033[0m") # Green
+            elif any(x in v for x in ["wrong", "time limit", "memory limit", "runtime error", "compilation error", ": wa", ": tle", ": mle", ": re", ": ce"]):
+                print(f"\u274c \033[91m{res}\033[0m") # Red
+            else:
+                print(f"\u26a0\ufe0f  \033[93m{res}\033[0m") # Yellow
         elif "REJECTED" in res or "ERROR" in res:
-            print(f"\u274c \033[91m{res}\033[0m")
+            print(f"\u274c \033[91m{res}\033[0m") # Red
         else:
             print(f"\u26a0\ufe0f  {res}")
         print("==============================")
     
+    if platform == "codeforces":
+        res = _submit_codeforces(submit_url, problem_code, lang_id, code_b64)
+        print_verdict(res)
+    
     elif platform == "atcoder":
         res = _submit_atcoder(submit_url, problem_code, lang_id, code_b64)
-        print("\n==============================")
-        if res.startswith("RESULT:"):
-            print(f"\u2705 \033[92m{res}\033[0m")
-        elif "REJECTED" in res or "ERROR" in res:
-            print(f"\u274c \033[91m{res}\033[0m")
-        else:
-            print(f"\u26a0\ufe0f  {res}")
-        print("==============================")
+        print_verdict(res)
 
 # ======================== Main ========================
 def main():
