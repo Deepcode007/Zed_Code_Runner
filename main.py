@@ -59,43 +59,6 @@ def get_saved_lang():
             pass
     return DEFAULT_LANG
 
-def get_saved_browser():
-    """Read the saved browser from config. Returns (app_name, browser_type)."""
-    if CONFIG_PATH.exists():
-        try:
-            cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-            return cfg.get("browser_app", "Safari"), cfg.get("browser_type", "webkit")
-        except Exception:
-            pass
-    return "Safari", "webkit"
-
-def set_browser_cmd(args):
-    """Save the chosen browser to config, auto-detecting the web engine by name."""
-    app_name = args.name.strip()
-
-    name_lower = app_name.lower()
-    browser_type = "webkit"
-    if any(x in name_lower for x in ["chrome", "brave", "arc", "edge", "vivaldi"]):
-        browser_type = "chromium"
-    elif any(x in name_lower for x in ["safari", "orion", "epiphany"]):
-        browser_type = "webkit"
-    else:
-        print(f"⚠️ Warning: Could not auto-detect browser engine for '{app_name}'. Defaulting to WebKit.")
-
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    cfg = {}
-    if CONFIG_PATH.exists():
-        try: cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-        except Exception: pass
-        
-    cfg["browser_app"] = app_name
-    cfg["browser_type"] = browser_type
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-    
-    print(f"✅ Browser set to \033[92m{app_name}\033[0m (Engine: {browser_type.title()})")
-    print(f"   Saved to {CONFIG_PATH}")
-    print(f"   Codeforces and AtCoder submissions will now execute using {app_name}.")
-
 def set_lang_cmd(args):
     """Save the chosen language to config."""
     lang = args.lang
@@ -601,11 +564,8 @@ def _submit_codeforces(submit_url, problem_code, lang_id, code_b64):
     } catch(e) { return 'WAIT'; }
 })();"""
 
-    browser_app, browser_type = get_saved_browser()
-    
-    if browser_type == "webkit":
-        APPLESCRIPT = f"""tell application "System Events" to set frontAppName to name of first application process whose frontmost is true
-tell application "{browser_app}"
+    APPLESCRIPT = f"""tell application "System Events" to set frontAppName to name of first application process whose frontmost is true
+tell application "Safari"
     if (count of windows) is 0 then make new document with properties {{URL:"about:blank"}}
     tell window 1 to set submitTab to make new tab with properties {{URL:"{submit_url}"}}
     set captchaAlerted to false
@@ -627,12 +587,12 @@ tell application "{browser_app}"
             if pageCheck is "CAPTCHA" then
                 if captchaAlerted is false then
                     set captchaAlerted to true
-                    tell application "{browser_app}" to activate
-                    log "CAPTCHA: Please solve the CAPTCHA in {browser_app}..."
+                    tell application "Safari" to activate
+                    log "CAPTCHA: Please solve the CAPTCHA in Safari..."
                 end if
             end if
         on error errMsg
-            if errMsg contains "not allowed" then return "ERROR: Enable 'Allow JavaScript from Apple Events' in {browser_app}"
+            if errMsg contains "not allowed" then return "ERROR: Enable 'Allow JavaScript from Apple Events' in Safari"
         end try
     end repeat
     delay 0.5
@@ -653,7 +613,7 @@ tell application "{browser_app}"
         if resultInfo is "CAPTCHA" then
             if resCaptchaAlerted is false then
                 set resCaptchaAlerted to true
-                tell application "{browser_app}" to activate
+                tell application "Safari" to activate
             end if
             log "CAPTCHA: Waiting for you to solve and resubmit..."
         else
@@ -668,86 +628,6 @@ tell application "{browser_app}"
                 delay 1
                 try
                     if (do JavaScript "document.readyState" in submitTab) is "complete" then exit repeat
-                end try
-            end repeat
-        else
-            delay 2
-        end if
-    end repeat
-    close submitTab
-end tell
-tell application frontAppName to activate
-return resultInfo"""
-    else:
-        APPLESCRIPT = f"""tell application "System Events" to set frontAppName to name of first application process whose frontmost is true
-tell application "{browser_app}"
-    if (count of windows) is 0 then make new window
-    tell window 1 to make new tab with properties {{URL:"{submit_url}"}}
-    set submitTab to active tab of window 1
-end tell
-tell application frontAppName to activate
-tell application "{browser_app}"
-    set captchaAlerted to false
-    repeat 120 times
-        delay 2
-        try
-            set pageCheck to execute submitTab javascript "(function(){{
-                var isC = false;
-                if(document.title.indexOf('Just a moment')>-1 || document.title.indexOf('Attention Required')>-1) isC=true;
-                if(document.querySelector('iframe[src*=\\"challenge\\"], iframe[src*=\\"turnstile\\"]') && !document.querySelector('select[name=\\"programTypeId\\"]')) isC=true;
-                var err = document.querySelector('.error');
-                if(err && err.textContent.toLowerCase().indexOf('captcha') > -1) isC=true;
-                
-                if(isC) return 'CAPTCHA';
-                if(document.querySelector('select[name=\\"programTypeId\\"]')) return 'READY';
-                return 'WAITING';
-            }})()"
-            if pageCheck is "READY" then exit repeat
-            if pageCheck is "CAPTCHA" then
-                if captchaAlerted is false then
-                    set captchaAlerted to true
-                    tell application "{browser_app}" to activate
-                    log "CAPTCHA: Please solve the CAPTCHA in {browser_app}..."
-                end if
-            end if
-        on error errMsg
-            if errMsg contains "not allowed" then return "ERROR: Enable 'Allow JavaScript from Apple Events' in {browser_app} via View > Developer."
-        end try
-    end repeat
-    delay 0.5
-    set fillJS to read POSIX file "/tmp/foc_fill_submit.js"
-    set submitResult to execute submitTab javascript fillJS
-    if submitResult does not start with "SUBMITTED" then return submitResult
-    
-    delay 4
-    set resultJS to read POSIX file "/tmp/foc_read_result.js"
-    set resultInfo to "UNKNOWN: Timed out"
-    set resCaptchaAlerted to false
-    repeat 120 times
-        try
-            set resultInfo to execute submitTab javascript resultJS
-        on error
-            set resultInfo to "WAIT"
-        end try
-        
-        if resultInfo is "CAPTCHA" then
-            if resCaptchaAlerted is false then
-                set resCaptchaAlerted to true
-                tell application "{browser_app}" to activate
-            end if
-            log "CAPTCHA: Waiting for you to solve and resubmit..."
-        else
-            log resultInfo
-        end if
-        
-        if resultInfo starts with "RESULT:" or resultInfo starts with "REJECTED:" then exit repeat
-        if resultInfo starts with "RELOAD:" then
-            execute submitTab javascript "window.location.reload()"
-            delay 1
-            repeat 30 times
-                delay 1
-                try
-                    if (execute submitTab javascript "document.readyState") is "complete" then exit repeat
                 end try
             end repeat
         else
@@ -855,11 +735,8 @@ def _submit_atcoder(submit_url, problem_code, lang_id, code_b64):
     } catch(e) { return 'WAIT'; }
 })();""" 
 
-    browser_app, browser_type = get_saved_browser()
-
-    if browser_type == "webkit":
-        APPLESCRIPT = f"""tell application "System Events" to set frontAppName to name of first application process whose frontmost is true
-tell application "{browser_app}"
+    APPLESCRIPT = f"""tell application "System Events" to set frontAppName to name of first application process whose frontmost is true
+tell application "Safari"
     if (count of windows) is 0 then make new document with properties {{URL:"about:blank"}}
     tell window 1 to set submitTab to make new tab with properties {{URL:"{submit_url}"}}
     repeat 120 times
@@ -867,7 +744,7 @@ tell application "{browser_app}"
         try
             if (do JavaScript "document.querySelector('select[name=\\"data.TaskScreenName\\"]') ? 'READY' : 'WAITING'" in submitTab) is "READY" then exit repeat
         on error errMsg
-            if errMsg contains "not allowed" then return "ERROR: Enable 'Allow JavaScript from Apple Events' in {browser_app}"
+            if errMsg contains "not allowed" then return "ERROR: Enable 'Allow JavaScript from Apple Events' in Safari"
         end try
     end repeat
     delay 0.5
@@ -892,9 +769,9 @@ tell application "{browser_app}"
             if captchaHandled is false then
                 set captchaHandled to true
                 set current tab of window 1 to submitTab
-                tell application "{browser_app}" to activate
+                tell application "Safari" to activate
             end if
-            log "CAPTCHA/LOGIN: Waiting for you to solve and resubmit in {browser_app}..."
+            log "CAPTCHA: Waiting for you to solve and resubmit..."
         else
             log resultInfo
         end if
@@ -906,72 +783,6 @@ tell application "{browser_app}"
                 delay 1
                 try
                     if (do JavaScript "document.readyState" in submitTab) is "complete" then exit repeat
-                end try
-            end repeat
-        else
-            delay 2
-        end if
-    end repeat
-    delay 0.5
-    try
-        close submitTab
-    end try
-end tell
-tell application frontAppName to activate
-return resultInfo"""
-    else:
-        APPLESCRIPT = f"""tell application "System Events" to set frontAppName to name of first application process whose frontmost is true
-tell application "{browser_app}"
-    if (count of windows) is 0 then make new window
-    tell window 1 to make new tab with properties {{URL:"{submit_url}"}}
-    set submitTab to active tab of window 1
-end tell
-tell application frontAppName to activate
-tell application "{browser_app}"
-    repeat 120 times
-        delay 2
-        try
-            if (execute submitTab javascript "document.querySelector('select[name=\\"data.TaskScreenName\\"]') ? 'READY' : 'WAITING'") is "READY" then exit repeat
-        on error errMsg
-            if errMsg contains "not allowed" then return "ERROR: Enable 'Allow JavaScript from Apple Events' in {browser_app} via View > Developer."
-        end try
-    end repeat
-    delay 0.5
-    set fillJS to read POSIX file "/tmp/foc_fill_submit.js"
-    set submitResult to execute submitTab javascript fillJS
-    if submitResult does not start with "SUBMITTED" then return submitResult
-    delay 4
-    
-    -- Check if we're still on submit page with error (CAPTCHA or other issue)
-    set resultJS to read POSIX file "/tmp/foc_read_result.js"
-    set resultInfo to "UNKNOWN: Timed out"
-    set captchaHandled to false
-    repeat 120 times
-        try
-            set resultInfo to execute submitTab javascript resultJS
-        on error
-            set resultInfo to "WAIT"
-        end try
-        
-        -- Detect: still on submit page with error = CAPTCHA or validation failure
-        if resultInfo is "CAPTCHA" then
-            if captchaHandled is false then
-                set captchaHandled to true
-                set current tab of window 1 to submitTab
-                tell application "{browser_app}" to activate
-            end if
-            log "CAPTCHA/LOGIN: Waiting for you to solve and resubmit in {browser_app}..."
-        else
-            log resultInfo
-        end if
-        if resultInfo starts with "RESULT:" or resultInfo starts with "REJECTED:" then exit repeat
-        if resultInfo starts with "RELOAD:" then
-            execute submitTab javascript "window.location.reload()"
-            delay 1
-            repeat 30 times
-                delay 1
-                try
-                    if (execute submitTab javascript "document.readyState") is "complete" then exit repeat
                 end try
             end repeat
         else
@@ -1045,8 +856,8 @@ def submit_cmd(args):
     if ch in ('\x7f', '\x08', '\x1b'):  # backspace, delete, escape
         print("❌ Submission cancelled.")
         return
-    browser_app, _ = get_saved_browser()
-    print(f"\n\033[93m{browser_app} will open in the background to handle the submission.\033[0m")
+    
+    print("\n\033[93mSafari will open in the background to handle the submission.\033[0m")
     
     def print_verdict(res):
         print("\n==============================")
@@ -1099,10 +910,6 @@ def main():
     lang_parser = subparsers.add_parser("set_lang", help="Set language for run/submit")
     lang_parser.add_argument("lang", choices=LANGUAGES.keys(), help="Language to use")
 
-    # Set Browser
-    browser_parser = subparsers.add_parser("set_browser", help="Set browser application name")
-    browser_parser.add_argument("name", help='Exact name of the browser application (e.g., Safari, "Google Chrome")')
-
     args = parser.parse_args()
 
     if args.command == "listen":
@@ -1115,8 +922,6 @@ def main():
         submit_cmd(args)
     elif args.command == "set_lang":
         set_lang_cmd(args)
-    elif args.command == "set_browser":
-        set_browser_cmd(args)
 
 if __name__ == "__main__":
     main()
