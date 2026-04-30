@@ -113,7 +113,7 @@ def set_lang_cmd(args):
     print(f"   Compiler:  {LANGUAGES[lang].get('compile', LANGUAGES[lang].get('run', []))}")
     print(f"   CF Submit:  {LANGUAGES[lang]['cf_name']} (id={LANGUAGES[lang]['cf_id']})")
     print(f"\n   Saved to {CONFIG_PATH}")
-    print(f"   All future Run/Submit tasks will use this language.")
+    print("   All future Run/Submit tasks will use this language.")
 
 def is_folder_open_in_zed(folder_path):
     """Checks if a Zed process is currently managing this folder path."""
