@@ -68,15 +68,17 @@ def set_lang_cmd(args):
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     cfg = {}
     if CONFIG_PATH.exists():
-        try: cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-        except Exception: pass
+        try:
+            cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
     cfg["lang"] = lang
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
     print(f"✅ Language set to \033[92m{lang}\033[0m")
     print(f"   Compiler:  {LANGUAGES[lang].get('compile', LANGUAGES[lang].get('run', []))}")
     print(f"   CF Submit:  {LANGUAGES[lang]['cf_name']} (id={LANGUAGES[lang]['cf_id']})")
     print(f"\n   Saved to {CONFIG_PATH}")
-    print(f"   All future Run/Submit tasks will use this language.")
+    print("   All future Run/Submit tasks will use this language.")
 
 def is_folder_open_in_zed(folder_path):
     """Checks if a Zed process is currently managing this folder path."""
@@ -127,9 +129,18 @@ def process_problem(data, active_folder):
     # Write template if file doesn't exist
     if not file_path.exists():
         content = ""
-        boilerplate = Path(APP_DIR).expanduser() / "boilerplate.cpp"
+        boilerplate = Path("/Users/deep/.config/zed/snippets/c++.json").expanduser()
         if boilerplate.exists():
-            content = boilerplate.read_text(encoding="utf-8")
+            import json
+            try:
+                snippet_data = json.loads(boilerplate.read_text(encoding="utf-8"))
+                body = snippet_data.get("CP Template Advanced", {}).get("body", [])
+                content = "\n".join(body) if isinstance(body, list) else body
+                content = re.sub(r'\$\d+', '', content)
+                content = re.sub(r'\$\{\d+(:.*?)?\}', '', content)
+            except Exception as e:
+                print(f"[Companion] Failed to parse snippet: {e}")
+                content = ""
                 
         file_path.write_text(content, encoding="utf-8")
 
@@ -367,12 +378,12 @@ def run_cmd(args):
             print(f"⏰ \033[93mTime Limit Exceeded\033[0m - >{TIME_LIMIT_SEC*1000:.0f}ms")
         print("")
         
-    print(f"=====================================")
+    print("=====================================")
     if passed == len(tests):
         print(f"🏆 \033[92mALL {passed}/{len(tests)} CASES PASSED!\033[0m")
     else:
         print(f"💥 \033[91mFAILED: {len(tests)-passed}/{len(tests)} cases failed.\033[0m")
-    print(f"=====================================")
+    print("=====================================")
 
 # ======================== Add Test ========================
 def add_test_cmd(args):
