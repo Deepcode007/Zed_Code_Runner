@@ -67,6 +67,12 @@ Open your Zed tasks file (`~/.config/zed/tasks.json`) and add the following 4 ta
     "command": "python3 ~/.vc-zed-cp-helper/main.py set_lang cpp20",
     "use_new_terminal": false,
     "allow_concurrent_runs": false
+  },
+  {
+    "label": "CP: Set Browser [Orion]",
+    "command": "python3 ~/.vc-zed-cp-helper/main.py set_browser 'Orion'",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false
   }
 ]
 ```
@@ -96,10 +102,13 @@ At the start of your programming session, open Zed and launch the **CP: Start Li
 
 Click the green `+` on the Competitive Companion extension in your browser when viewing a Codeforces or AtCoder problem. Zed will automatically open the generated source file.
 
-### 2. Set Language 
+### 2. Set Language / Browser
 You only have to do this once. Run the **CP: Set Language [cpp20]** task. 
 *(You can press `TAB` before hitting enter to modify it to `cpp23`, `python`, `java`, etc.)*
 This saves the active language inside `~/.vc-zed-cp-helper/config.json`. Every "Run" or "Submit" task will use this language.
+
+Similarly, you can run **CP: Set Browser [Orion]** to change your web automation engine. 
+*(Note: Ensure you put quotes around the browser name in your `tasks.json` file if your browser name contains spaces! Example: `'Google Chrome'`)*.
 
 ### 3. Testing 
 Solve your problem and save the file. Open the Zed Task Menu (`cmd+shift+R`) and run **CP: Run Tests**. The script compiles the code dynamically and tests every embedded sample case.
